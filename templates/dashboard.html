@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>用户仪表盘</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="page-wrapper">
+    <div class="navbar">
+        <a href="{{ url_for('apply') }}" class="tooltip">
+            <img src="{{ url_for('static', filename='png/getapply.png') }}" alt="申请权限图标">
+            <span class="tooltiptext">申请权限</span>
+        </a>
+        {% if session.admin %}
+        <a href="{{ url_for('apply_change') }}" class="tooltip">
+            <img src="{{ url_for('static', filename='png/changeapply.png') }}" alt="修改权限图标">
+            <span class="tooltiptext">修改权限</span>
+        </a>
+        <a href="{{ url_for('user_manage') }}" class="tooltip">
+            <img src="{{ url_for('static', filename='png/usermanage.png') }}" alt="用户管理图标">
+            <span class="tooltiptext">用户管理</span>
+        </a>
+        <a href="{{ url_for('setting') }}" class="tooltip">
+            <img src="{{ url_for('static', filename='png/setting.png') }}" alt="设置图标">
+            <span class="tooltiptext">设置</span>
+        </a>
+        {% endif %}
+    </div>
+    <div class="dashboard-container">
+        <h1>欢迎，{{ username }}！</h1>
+
+        <div class="status">
+            <p>VIP 状态: <strong>{{ "是" if vip else "否" }}</strong></p>
+            <p>管理员权限: <strong>{{ "是" if admin else "否" }}</strong></p>
+        </div>
+
+        <div class="actions">
+            <a href="{{ url_for('logout') }}">登出</a>
+        </div>
+    </div>
+    </div>
+</body>
+<style>
+    /* 添加CSS样式以显示tooltip */
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 120px;
+        background-color: #fff;
+        color: #555;
+        text-align: center;
+        border-radius: 5px;
+        padding: 5px 0;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        /* 位置可以根据需要调整 */
+        left: 50%;
+        margin-left: -60px;
+        /* 位置可以根据需要调整 */
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
+</style>
+</html>

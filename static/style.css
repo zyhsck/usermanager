@@ -1,0 +1,197 @@
+/* static/style.css */
+
+* {
+    box-sizing: border-box;
+}
+body {
+    font-family: "Microsoft YaHei", "Segoe UI", "Helvetica Neue", sans-serif;
+    background: linear-gradient(to right, #e0eafc, #cfdef3);
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    /* 顶部对齐 */
+    padding-top: 60px;
+    /* 可调节 */
+    box-sizing: border-box;
+}
+
+.page-wrapper {
+    width: 100%;
+    max-width: 600px;
+}
+
+form {
+    background-color: white;
+    padding: 5px 10px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+textarea {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    margin: 0.5rem 0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    /* 允许上下拉伸，但不允许左右拉伸 */
+    min-height: 120px;
+    box-sizing: border-box;
+}
+
+button {
+    width: 80%;
+    padding: 0.6rem;
+    background-color: #4e9af1;
+    color: white;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: block;
+    margin: 0 auto;
+}
+
+button:hover {
+    background-color: #357ae8;
+}
+
+p {
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+a {
+    color: #4e9af1;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+p[style*="color: red;"] {
+    color: red;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.audit-table{
+    max-width: 600px;
+    margin: 0 auto 10px;
+    background: white;
+    padding: 2px 4px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    line-height: 1.2;
+}
+.navbar {
+    max-width: 600px;
+    margin: 0 auto 10px;
+    background: white;
+    padding: 2px 4px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    line-height: 1.2;
+}
+
+.navbar img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-bottom: 4px;
+}
+
+.dashboard-container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.status p {
+    font-size: 18px;
+    margin: 15px 0;
+}
+
+.actions a {
+    display: inline-block;
+    margin-top: 30px;
+    padding: 10px 25px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.actions a:hover {
+    background-color: #0056b3;
+}
+
+.success-message {
+    color: rgb(44, 215, 44);
+    font-weight: bold;
+    margin-top: 20px;
+}
+.error-message {
+    color: red;
+    font-weight: bold;
+    margin-top: 20px;
+}
+
+.changelang {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.95rem;
+    color: #333;
+    position: absolute;
+    right: 10px;
+    top: 20px;
+}
+
+.changelang a {
+    display: inline-block;
+    margin: 0 10px;
+    padding: 6px 12px;
+    border: 1px solid #4e9af1;
+    border-radius: 6px;
+    background-color: white;
+    color: #4e9af1;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.changelang a:hover {
+    background-color: #4e9af1;
+    color: white;
+    text-decoration: none;
+}

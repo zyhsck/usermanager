@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="{{ request.cookies.get('lang', 'zh') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="language-switcher">
+        <a href="{{ url_for('set_language', lang_code='en') }}">English</a> | 
+        <a href="{{ url_for('set_language', lang_code='zh') }}">中文</a>
+    </div>
+    
+    {% block content %}{% endblock %}
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+</body>
+</html>

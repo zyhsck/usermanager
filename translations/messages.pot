@@ -1,0 +1,108 @@
+# Translations template for PROJECT.
+# Copyright (C) 2025 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2025-05-18 18:15+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: templates/apply.html:20 templates/apply_change.html:25
+msgid "申请权限"
+msgstr ""
+
+#: templates/apply.html:27
+msgid "请选择要申请的权限："
+msgstr ""
+
+#: templates/apply.html:30
+msgid "管理员"
+msgstr ""
+
+#: templates/apply.html:31
+msgid "API 使用权"
+msgstr ""
+
+#: templates/apply.html:34
+msgid "提交申请"
+msgstr ""
+
+#: templates/apply.html:38 templates/apply_change.html:65
+msgid "返回仪表盘"
+msgstr ""
+
+#: templates/apply_change.html:12
+msgid "权限申请审核"
+msgstr ""
+
+#: templates/apply_change.html:24 templates/login.html:14
+#: templates/sign.html:14
+msgid "用户名"
+msgstr ""
+
+#: templates/apply_change.html:26
+msgid "状态"
+msgstr ""
+
+#: templates/apply_change.html:27
+msgid "申请理由"
+msgstr ""
+
+#: templates/apply_change.html:28
+msgid "操作"
+msgstr ""
+
+#: templates/apply_change.html:39
+msgid "待审核"
+msgstr ""
+
+#: templates/apply_change.html:41
+msgid "已通过"
+msgstr ""
+
+#: templates/apply_change.html:43
+msgid "已拒绝"
+msgstr ""
+
+#: templates/apply_change.html:52
+msgid "通过"
+msgstr ""
+
+#: templates/apply_change.html:53
+msgid "拒绝"
+msgstr ""
+
+#: templates/index.html:6
+msgid "主页"
+msgstr ""
+
+#: templates/login.html:5
+msgid "登录界面"
+msgstr ""
+
+#: templates/login.html:13 templates/login.html:16
+msgid "登录"
+msgstr ""
+
+#: templates/login.html:15 templates/sign.html:15
+msgid "密码"
+msgstr ""
+
+#: templates/sign.html:5
+msgid "注册界面"
+msgstr ""
+
+#: templates/sign.html:13 templates/sign.html:16
+msgid "注册"
+msgstr ""
+

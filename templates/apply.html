@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html >
+
+<head>
+    <meta charset="UTF-8">
+    <title>权限申请</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="changelang">
+        <a href="{{ url_for('set_language', lang_code='en') }}">English</a>
+        |
+        <a href="{{ url_for('set_language', lang_code='zh') }}">中文</a>
+    </div>
+    <div class="form-container">
+        
+
+        <form method="POST">
+            <h2>{{ _("申请权限") }}</h2>
+            
+            {% if success %}
+            <p class="success-message">{{ success }}</p>
+            {% elif error %}
+            <p class="error-message">{{ error }}</p>
+            {% endif %}
+            <label for="permission">{{ _("请选择要申请的权限：") }}</label>
+            <select name="permission" id="permission" required>
+                <option value="vip">VIP</option>
+                <option value="admin">{{ _("管理员") }}</option>
+                <option value="api">{{ _("API 使用权") }}</option>
+            </select>
+            <textarea name="reason" id="reason" rows="4" placeholder="请输入申请理由..." required></textarea>
+            <button type="submit">{{ _("提交申请") }}</button>
+        </form>
+
+        <div class="actions">
+            <a href="{{ url_for('dashboard') }}">{{ _("返回仪表盘") }}</a>
+        </div>
+    </div>
+</body>
+
+
+</html>

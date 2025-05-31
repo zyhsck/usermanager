@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>设置界面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="settings-container">
+        <h2>{{ _("设置界面") }}</h2>
+
+        {% if success %}
+        <p class="success">{{ success }}</p>
+        {% elif error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <div class="navbar">
+            <a class="tooltip" onclick="showSettings('PersonInfo')">
+                <img src="{{ url_for('static', filename='png/personinfo.png') }}" alt="个人资料">
+                <span class="tooltiptext">个人资料</span>
+            </a>
+            {% if session.admin %}
+            <a class="tooltip" onclick="showSettings('ServerInfo')">
+                <img src="{{ url_for('static', filename='png/serverinfo.png') }}" alt="服务器设置">
+                <span class="tooltiptext">服务器设置</span>
+            </a>
+            <a class="tooltip" onclick="showSettings('OAuthClients')">
+                <img src="{{ url_for('static', filename='png/oauth.png') }}" alt="OAuth客户端">
+                <span class="tooltiptext">OAuth客户端</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <div id="PersonInfo" class="settings-content">
+            <form id="profileForm" enctype="multipart/form-data">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>{{ _("选项") }}</th>
+                            <th>{{ _("说明") }}</th>
+                            <th>{{ _("更改") }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>头像</td>
+                            <td>你账号显示的头像</td>
+                            <td>
+                                <div class="avatar-container">
+                                    {% if user_info.usericon_url %}
+                                    <img src="{{ user_info.usericon_url }}" alt="头像" class="avatar-preview">
+                                    {% else %}
+                                    <div class="avatar-placeholder">无头像</div>
+                                    {% endif %}
+                                    <input type="file" name="usericon" id="usericon">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>用户名</td>
+                            <td>你的登录用户名</td>
+                            <td>
+                                <input type="text" name="username" value="{{ user_info.username }}" readonly>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>密码</td>
+                            <td>修改密码（留空表示不修改）</td>
+                            <td>
+                                <input type="password" name="password" placeholder="输入新密码">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>邮箱</td>
+                            <td>你的联系邮箱</td>
+                            <td>
+                                <input type="email" name="email" value="{{ user_info.email or '' }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>电话</td>
+                            <td>你的联系电话</td>
+                            <td>
+                                <input type="tel" name="phone" value="{{ user_info.phone or '' }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>真实姓名</td>
+                            <td>你的真实姓名</td>
+                            <td>
+                                <input type="text" name="real_name" value="{{ user_info.real_name or '' }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>个人简介</td>
+                            <td>关于你自己的简短介绍</td>
+                            <td>
+                                <textarea name="bio" rows="3">{{ user_info.bio or '' }}</textarea>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>位置</td>
+                            <td>你所在的城市或地区</td>
+                            <td>
+                                <input type="text" name="location" value="{{ user_info.location or '' }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>个人网站</td>
+                            <td>你的个人网站或博客</td>
+                            <td>
+                                <input type="url" name="website" value="{{ user_info.website or '' }}">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="button" onclick="saveProfile()">{{ _("保存个人信息") }}</button>
+            </form>
+        </div>
+
+        <div id="ServerInfo" class="settings-content" style="display: none;">
+            <form id="serverConfigForm">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>{{ _("选项") }}</th>
+                            <th>{{ _("说明") }}</th>
+                            <th>{{ _("更改") }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>服务器名称</td>
+                            <td>系统显示的服务器名称</td>
+                            <td>
+                                <input type="text" name="server_name" value="{{ server_config.server_name }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>允许注册</td>
+                            <td>是否允许新用户注册</td>
+                            <td>
+                                <label class="switch">
+                                    <input type="checkbox" name="allow_registration" {% if server_config.allow_registration %}checked{% endif %}>
+                                    <span class="slider round"></span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>最大用户数</td>
+                            <td>系统允许的最大用户数量</td>
+                            <td>
+                                <input type="number" name="max_users" value="{{ server_config.max_users }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>会话超时</td>
+                            <td>用户会话超时时间（秒）</td>
+                            <td>
+                                <input type="number" name="session_timeout" value="{{ server_config.session_timeout }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>日志级别</td>
+                            <td>系统日志记录级别</td>
+                            <td>
+                                <select name="log_level">
+                                    <option value="debug" {% if server_config.log_level == 'debug' %}selected{% endif %}>Debug</option>
+                                    <option value="info" {% if server_config.log_level == 'info' %}selected{% endif %}>Info</option>
+                                    <option value="warning" {% if server_config.log_level == 'warning' %}selected{% endif %}>Warning</option>
+                                    <option value="error" {% if server_config.log_level == 'error' %}selected{% endif %}>Error</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>维护模式</td>
+                            <td>开启后将禁止普通用户登录</td>
+                            <td>
+                                <label class="switch">
+                                    <input type="checkbox" name="maintenance_mode" {% if server_config.maintenance_mode %}checked{% endif %}>
+                                    <span class="slider round"></span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>维护消息</td>
+                            <td>维护模式下显示的消息</td>
+                            <td>
+                                <textarea name="maintenance_message" rows="2">{{ server_config.maintenance_message }}</textarea>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h4>邮件服务器设置</h4>
+                <table class="audit-table">
+                    <tbody>
+                        <tr>
+                            <td>启用邮件</td>
+                            <td>是否启用邮件通知功能</td>
+                            <td>
+                                <label class="switch">
+                                    <input type="checkbox" name="smtp_settings.enabled" {% if server_config.smtp_settings.enabled %}checked{% endif %}>
+                                    <span class="slider round"></span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>SMTP服务器</td>
+                            <td>邮件服务器地址</td>
+                            <td>
+                                <input type="text" name="smtp_settings.server" value="{{ server_config.smtp_settings.server }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>SMTP端口</td>
+                            <td>邮件服务器端口</td>
+                            <td>
+                                <input type="number" name="smtp_settings.port" value="{{ server_config.smtp_settings.port }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>SMTP用户名</td>
+                            <td>邮件服务器用户名</td>
+                            <td>
+                                <input type="text" name="smtp_settings.username" value="{{ server_config.smtp_settings.username }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>SMTP密码</td>
+                            <td>邮件服务器密码</td>
+                            <td>
+                                <input type="password" name="smtp_settings.password" value="{{ server_config.smtp_settings.password }}">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>使用TLS</td>
+                            <td>是否使用TLS加密</td>
+                            <td>
+                                <label class="switch">
+                                    <input type="checkbox" name="smtp_settings.use_tls" {% if server_config.smtp_settings.use_tls %}checked{% endif %}>
+                                    <span class="slider round"></span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>发件人邮箱</td>
+                            <td>系统发送邮件的邮箱地址</td>
+                            <td>
+                                <input type="email" name="smtp_settings.from_email" value="{{ server_config.smtp_settings.from_email }}">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="button" onclick="saveServerConfig()">{{ _("保存服务器设置") }}</button>
+            </form>
+        </div>
+
+        <div id="OAuthClients" class="settings-content" style="display: none;">
+            <div class="oauth-clients-container">
+                <h3>OAuth客户端管理</h3>
+                <button type="button" onclick="showAddClientForm()" class="add-client-btn">添加新客户端</button>
+                
+                <div id="clientsList">
+                    <table class="audit-table">
+                        <thead>
+                            <tr>
+                                <th>客户端名称</th>
+                                <th>客户端ID</th>
+                                <th>重定向URI</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTableBody">
+                            {% for client in oauth_clients %}
+                            <tr>
+                                <td>{{ client.name }}</td>
+                                <td>{{ client.client_id }}</td>
+                                <td>{{ client.redirect_uri }}</td>
+                                <td>
+                                    <button onclick="editClient('{{ client.client_id }}')" class="edit-btn">编辑</button>
+                                    <button onclick="deleteClient('{{ client.client_id }}')" class="delete-btn">删除</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 添加/编辑客户端的表单 -->
+                <div id="clientForm" style="display: none;">
+                    <h4 id="formTitle">添加新客户端</h4>
+                    <form id="oauthClientForm" onsubmit="handleClientSubmit(event)">
+                        <input type="hidden" id="clientId" name="client_id">
+                        <div class="form-group">
+                            <label for="clientName">客户端名称:</label>
+                            <input type="text" id="clientName" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="redirectUri">重定向URI:</label>
+                            <input type="url" id="redirectUri" name="redirect_uri" required>
+                        </div>
+                        <div class="form-buttons">
+                            <button type="submit" class="submit-btn">保存</button>
+                            <button type="button" onclick="hideClientForm()" class="cancel-btn">取消</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="{{ url_for('dashboard') }}">{{ _("返回仪表盘") }}</a>
+        </div>
+    </div>
+</body>
+
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+<script>
+    function showSettings(settingsId) {
+        // 获取所有设置内容的div
+        var settingsContents = document.querySelectorAll('.settings-content');
+        // 隐藏所有设置内容的div
+        settingsContents.forEach(function (content) {
+            content.style.display = 'none';
+        });
+        // 显示指定的设置内容的div
+        var selectedContent = document.getElementById(settingsId);
+        if (selectedContent) {
+            selectedContent.style.display = 'block';
+        }
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 显示默认页面
+        showSettings('PersonInfo');
+        
+        // 如果URL中有hash，切换到对应页面
+        if (window.location.hash) {
+            const page = window.location.hash.substring(1);
+            showSettings(page);
+        }
+    });
+</script>
+<style>
+    /* 添加CSS样式以显示tooltip */
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+    }
+
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 120px;
+        background-color: #fff;
+        color: #555;
+        text-align: center;
+        border-radius: 5px;
+        padding: 5px 0;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -60px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 15%;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        height: 80%;
+        width: 80%;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 80%;
+        width: 45%;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+    }
+
+    input:checked+.slider {
+        background-color: #2196F3;
+    }
+
+    input:focus+.slider {
+        box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked+.slider:before {
+        transform: translateX(26px);
+    }
+
+    /* 圆角滑块 */
+    .slider.round {
+        border-radius: 34px;
+    }
+
+    .slider.round:before {
+        border-radius: 50%;
+        left: -5%;
+        bottom: 13%;
+    }
+</style>
+
+</html>

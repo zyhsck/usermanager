@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{ _("登录界面") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    
+    <form method="post" action="{{ url_for('login', oauth=request.args.get('oauth')) }}">
+        <h1>{{ _("登录") }}</h1>
+        {% if is_oauth %}
+        <div class="oauth-notice">
+            <p>{{ _("第三方应用请求访问您的账户") }}</p>
+            <p>{{ _("登录后将自动授权访问") }}</p>
+        </div>
+        {% endif %}
+        <input type="text" name="username" placeholder="{{ _('用户名') }}" required>
+        <input type="password" name="password" placeholder="{{ _('密码') }}" required>
+        <button type="submit">{{ _("登录") }}</button>
+        <br>
+        <p>{{ _("还未注册?") }} <a href="/signup">{{ _("注册") }}</a>!</p>
+        {% if error %}
+        <p style="color: red;">{{ error }}</p>
+        {% endif %}
+    </form>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>用户管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+    <div class="audit-container">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <h2>{{ _("用户管理") }}</h2>
+            <button type="button" onclick="showModal(2)" style="margin: 0;right: 0; width: 20%; background-color: rgb(46, 115, 225);">{{ _("添加用户") }}</button>
+        </div>
+
+        {% if success %}
+        <p class="success">{{ success }}</p>
+        {% elif error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>{{ _("注册时间") }}</th>
+                    <th>{{ _("用户名") }}</th>
+                    <th>{{ _("权限") }}</th>
+                    <th>{{ _("操作") }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in user_list %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.time }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.permission }}</td>
+                    <td>
+                        <form method="POST" style="display:inline-block;">
+                            <input type="hidden" name="username" value="{{ user.username }}">
+                            <button style="background-color: rgb(46, 115, 225);" type="button"
+                                onclick="showuserinfo('{{ user.id }}', '{{ user.username }}', '{{ user.time }}', '{{ user.permission }}','{{user.vip}}')">{{
+                                _("更多") }}</button>
+                            <button style="background-color: rgb(225, 46, 46);" type="submit" name="delete"
+                                value="delete" onclick="return confirm('{{ _('确定要删除该用户吗？') }}');">{{ _("删除") }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="actions">
+            <a href="{{ url_for('dashboard') }}">{{ _("返回仪表盘") }}</a>
+        </div>
+    </div>
+
+    <!-- 弹窗内容 -->
+    <div id="modal1" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal(1)">&times;</span>
+            <h3>{{ _("用户详细信息") }}</h3>
+            <p>{{ _("ID") }}: <span id="modal-id"></span></p>
+            <p>{{ _("用户名") }}: <span id="modal-username"></span></p>
+            <p>{{ _("注册时间") }}: <span id="modal-time"></span></p>
+            <p>{{ _("权限") }}: <span id="modal-permission"></span></p>
+            <p>{{_("VIP")}}: <span id="modal-vip"></span></p>
+            <form id="permissionForm" action="{{ url_for('user_manage') }}" method="post">
+                <input type="hidden" name="username" id="modal-username-input">
+                <input type="checkbox" name="vip" id="modal-vip-input" value="1">
+                <label for="modal-vip-input">{{ _("VIP") }}</label>
+                <br>
+                <input type="checkbox" name="admin" id="modal-admin-input" value="1">
+                <label for="modal-admin-input">{{ _("admin") }}</label>
+                <br>
+                <button type="button" onclick="submitForm()" style="width: 10%;">{{ _("保存") }}</button>
+            </form>
+        </div>
+    </div>
+    <div id="modal2" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal(2)">&times;</span>
+            <form id="add-form" action="{{ url_for('user_manage') }}" method="post">
+                <h3>{{ _("添加用户") }}</h3>
+                <p>{{ _("用户名") }}:</p>
+                <input type="text" name="add-username" id="add-username-input">
+                <br>
+                <p>{{ _("密码") }}:</p>
+                <input type="password" name="add-password" id="add-password-input">
+                <br>
+                <p>{{ _("权限") }}:</p>
+                <input type="checkbox" name="add-vip" id="add-vip-input" value="1">
+                <label for="add-vip-input">{{ _("VIP") }}</label>
+                <br>
+                <input type="checkbox" name="add-admin" id="add-admin-input" value="1">
+                <label for="add-admin-input">{{ _("admin") }}</label>
+                <br>
+                <button type="button" onclick="document.getElementById('add-form').submit()" style="width: 10%;">{{ _("添加") }}</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 显示弹窗函数
+
+        function showModal(modalId) {
+            try {
+                const modal = document.getElementById('modal'+String(modalId));
+                modal.style.display = "block";
+                return modal
+            } catch (error) {
+                console.error('Error showing modal:', error);
+            }
+        }
+        function showuserinfo(id, username, time, permission, vip) {
+            
+            modal = showModal(1);
+            const modalContent = modal.querySelector('.modal-content');
+            modalContent.querySelector('#modal-id').innerText = id;
+            modalContent.querySelector('#modal-username').innerText = username;
+            modalContent.querySelector('#modal-time').innerText = time;
+            modalContent.querySelector('#modal-permission').innerText = permission;
+            modalContent.querySelector('#modal-vip').innerText = vip === "拥有" ? "是" : "否";
+
+            // 设置复选框的状态
+            modalContent.querySelector('#modal-username-input').value = username;
+            modalContent.querySelector('#modal-vip-input').checked = vip === "拥有";
+            modalContent.querySelector('#modal-admin-input').checked = permission.toLowerCase().includes('管理员');
+        }
+        // 关闭弹窗函数
+        function closeModal(modalId) {
+                document.getElementById('modal'+String(modalId)).style.display = "none";
+        }
+
+        // 提交表单函数
+        function submitForm() {
+            try {
+                const modal = document.getElementById('modal1');
+                const modalContent = modal.querySelector('.modal-content');
+
+                modalContent.querySelector('#modal-vip-input').value = modalContent.querySelector('#modal-vip-input').checked ? "1" : "0";
+                modalContent.querySelector('#modal-admin-input').value = modalContent.querySelector('#modal-admin-input').checked ? "1" : "0";
+
+                modalContent.querySelector('#permissionForm').submit();
+            } catch (error) {
+                console.error('Error submitting form:', error);
+            }
+        }
+    </script>
+</body>
+
+</body>
+<style>
+    /* 弹窗样式 */
+    .modal {
+        display: none;
+        /* 默认隐藏 */
+        position: fixed;
+        /* 固定位置 */
+        z-index: 1;
+        /* 确保在最前面 */
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
+        /* 黑色背景半透明 */
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        border-radius: 15px;
+        /* 圆角 */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        /* 阴影 */
+        animation: fadeIn 0.5s;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    /* 弹窗内容样式 */
+    .modal-content h3 {
+        margin-top: 0;
+    }
+
+    .modal-content p {
+        margin: 5px 0;
+    }
+
+    .modal-content span {
+        font-weight: bold;
+    }
+</style>
+
+</html>

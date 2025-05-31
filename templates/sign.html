@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <title>{{ _("注册界面") }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+   
+    <form method="post" action="{{ url_for('signup') }}">
+        <h1>{{ _("注册") }}</h1>
+        <input type="text" name="username" placeholder="{{ _('用户名') }}" required>
+        <input type="password" name="password" placeholder="{{ _('密码') }}" required>
+        <button type="submit">{{ _("注册") }}</button>
+        {% if error %}
+        <p style="color: red;">{{ error }}</p>
+        {% endif %}
+    </form>
+    
+
+</html>

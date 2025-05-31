@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>权限申请审核</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="audit-container">
+        <h2>{{ _("权限申请审核") }}</h2>
+
+        {% if success %}
+        <p class="success">{{ success }}</p>
+        {% elif error %}
+        <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>{{ _("申请时间") }}</th>
+                    <th>{{ _("用户名") }}</th>
+                    <th>{{ _("申请权限") }}</th>
+                    <th>{{ _("状态") }}</th>
+                    <th>{{ _("申请理由") }}</th>
+                    <th>{{ _("操作") }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for apply in apply_list %}
+                <tr>
+                    <td>{{ apply.id }}</td>
+                    <td>{{ apply.time }}</td>
+                    <td>{{ apply.username }}</td>
+                    <td>{{ apply.permission }}</td>
+                    <td>
+                        {% if apply.status is none %}
+                        {{ _("待审核") }}
+                        {% elif apply.status %}
+                        {{ _("已通过") }}
+                        {% else %}
+                        {{ _("已拒绝") }}
+                        {% endif %}
+                    </td>
+                    <td>{{ apply.reason }}</td>
+                    <td>
+                        {% if apply.status is none %}
+                        <form method="POST" style="display:inline-block;">
+                            <input type="hidden" name="username" value="{{ apply.username }}">
+                            <input type="hidden" name="permission" value="{{ apply.permission }}">
+                            <button type="submit" name="status" value="True">{{ _("通过") }}</button>
+                            <button type="submit" name="status" value="False">{{ _("拒绝") }}</button>
+                        </form>
+                        {% else %}
+                        <form method="POST" style="display:inline-block;">
+                            <input type="hidden" name="username" value="{{ apply.username }}">
+                            <input type="hidden" name="permission" value="{{ apply.permission }}">
+                            <button type="submit" name="status" value="True">{{ _("是") }}</button>
+                            <button type="submit" name="status" value="False">{{ _("否") }}</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="actions">
+            <a href="{{ url_for('dashboard') }}">{{ _("返回仪表盘") }}</a>
+        </div>
+    </div>
+</body>
+
+</html>
