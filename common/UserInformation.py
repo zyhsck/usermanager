@@ -1,6 +1,11 @@
-from common.Config import *
 from werkzeug.security import generate_password_hash, check_password_hash
-
+from datetime import datetime
+from uuid import uuid4
+import secrets
+import logging
+from flask import session
+from flask import current_app
+from .db_setup import db
 
 # 用户模型
 class User(db.Model):
@@ -82,12 +87,14 @@ class UserInformation:
             # 没有请求上下文，session 无法操作
             logging.error("刷新 session 时无请求上下文")
             return False, "刷新 session 失败：无请求上下文"
+
     @staticmethod
     def verify_api_token(username, token):
         user = User.query.filter_by(username=username).first()
         if user and user.api_token == token:
             return True
         return False
+
     @staticmethod
     def get_user_info(username):
         user = User.query.filter_by(username=username).first()
@@ -138,12 +145,14 @@ class UserInformation:
         try:
             if action == 'create':
                 client = OAuthClient(
-                    client_id=secrets.token_urlsafe(32),
-                    client_secret=secrets.token_urlsafe(64),
                     name=kwargs['name'],
                     redirect_uri=kwargs['redirect_uri'],
-                    created_by=kwargs['created_by']
+                    created_by=kwargs['created_by'],
+                    client_id=secrets.token_urlsafe(32),
+                    client_secret=secrets.token_urlsafe(64)
                 )
+                if 'is_active' in kwargs:
+                    client.is_active = kwargs['is_active']
                 db.session.add(client)
                 db.session.commit()
                 return True, "OAuth客户端创建成功", client
@@ -155,6 +164,11 @@ class UserInformation:
                     
                 client.name = kwargs['name']
                 client.redirect_uri = kwargs['redirect_uri']
+                
+                # 处理 is_active 字段
+                if 'is_active' in kwargs:
+                    client.is_active = kwargs['is_active']
+                    
                 db.session.commit()
                 return True, "OAuth客户端更新成功", client
                 
@@ -176,6 +190,7 @@ class UserInformation:
         except Exception as e:
             db.session.rollback()
             return False, f"操作失败：{str(e)}", None
+
     @staticmethod
     def get_users_name_list():
         users = User.query.all()
@@ -183,6 +198,7 @@ class UserInformation:
         for user in users:
             user_list.append(user.username)
         return user_list
+
     @staticmethod
     def get_users_info_list():
         users = User.query.all()
@@ -195,6 +211,7 @@ class UserInformation:
                 "register_time": user.register_time.strftime('%Y-%m-%d %H:%M:%S'),
             })
         return user_list
+
     @staticmethod
     def delete_user(username):
         user = User.query.filter_by(username=username).first()
@@ -203,18 +220,24 @@ class UserInformation:
             db.session.commit()
             return True, "用户删除成功"
         return False, "用户不存在"
+
     @staticmethod
     def get_server_info():
         server_info = { 
             "users_num": User.query.count(),
             "time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-
-            
+            "smtp_settings": {
+                "host": current_app.config.get('MAIL_SERVER'),
+                "port": current_app.config.get('MAIL_PORT'),
+                "username": current_app.config.get('MAIL_USERNAME'),
+                "password": "********",  # 出于安全考虑，不返回实际密码
+                "use_tls": current_app.config.get('MAIL_USE_TLS', False),
+                "from_email": current_app.config.get('MAIL_DEFAULT_SENDER')
+            }
         }
         return server_info
 
 
-# 权限申请模型
 # OAuth客户端模型
 class OAuthClient(db.Model):
     __bind_key__ = 'oauth_db'
@@ -228,7 +251,10 @@ class OAuthClient(db.Model):
     created_by = db.Column(db.String(150), nullable=False)  # 关联到用户名
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # 控制客户端是否启用
 
+
+# 权限申请模型
 class UserApply(db.Model):
     __bind_key__ = 'apply_db'
     __tablename__ = 'user_apply'
@@ -280,7 +306,6 @@ class UserApply(db.Model):
             return False, "权限不存在"
 
         if need_entry == True:
-            #print(need_entry)
             apply_entry = cls.query.filter_by(username=username, permission=permission).first()
             if (not apply_entry):
                 return False, "申请记录不存在"
@@ -302,21 +327,21 @@ class UserApply(db.Model):
                 user.api_token = None
 
         db.session.commit()
-
-        # 不要在这里刷新 session
-        # success, msg = UserInformation.refresh_user_session(username)
-        # if not success:
-        #     logging.warning(f"刷新用户会话失败: {msg}")
-
         return True, "申请状态已更新", status
 
 
-def initialize_system():
+def initialize_system(app):
+    """
+    初始化系统数据库和Redis
+    
+    Args:
+        app: Flask应用实例
+    """
     with app.app_context():
         db.create_all()
-        ensure_user_apply_columns()  # 确保数据表有新增字段
+        ensure_user_apply_columns(app)  # 确保数据表有新增字段
 
-        redis_store = app.config.get('SESSION_REDIS')
+        redis_store = current_app.config.get('SESSION_REDIS')
         if redis_store:
             redis_store.flushdb()  # 注意：清空当前数据库，谨慎调用
             print("Redis 数据库已清空。")
@@ -324,3 +349,19 @@ def initialize_system():
             print("未配置 SESSION_REDIS，跳过清空 Redis 操作。")
 
     print("数据库和 Redis 初始化完成。")
+
+
+def ensure_user_apply_columns(app):
+    """
+    确保用户申请表包含所有必要的列
+    
+    Args:
+        app: Flask应用实例
+    """
+    with app.app_context():
+        inspector = db.inspect(db.engine.get_bind(bind='apply_db'))
+        columns = [col['name'] for col in inspector.get_columns('user_apply')]
+        
+        if 'status' not in columns:
+            db.session.execute('ALTER TABLE user_apply ADD COLUMN status BOOLEAN DEFAULT NULL')
+            db.session.commit()

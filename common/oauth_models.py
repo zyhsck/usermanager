@@ -1,52 +1,47 @@
-from .Config import db
+from .db_setup import db
 from datetime import datetime
 import json
 
 class OAuthClient(db.Model):
     __bind_key__ = 'oauth_db'
     __tablename__ = 'oauth_clients'
+    __table_args__ = {'extend_existing': True}
 
     id = db.Column(db.Integer, primary_key=True)
-    client_id = db.Column(db.String(64), unique=True, nullable=False)
-    client_secret = db.Column(db.String(64), nullable=False)
-    name = db.Column(db.String(128), nullable=False)
-    redirect_uris = db.Column(db.Text, nullable=False)  # 存储为JSON字符串
+    client_id = db.Column(db.String(100), unique=True, nullable=False)
+    client_secret = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    redirect_uri = db.Column(db.String(500), nullable=False)
+    created_by = db.Column(db.String(150), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_active = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
 
-    def __init__(self, name, redirect_uris, client_id=None, client_secret=None):
+    def __init__(self, name, redirect_uri, created_by, client_id=None, client_secret=None):
         from uuid import uuid4
         self.client_id = client_id or str(uuid4())
         self.client_secret = client_secret or str(uuid4())
         self.name = name
-        self.set_redirect_uris(redirect_uris)
-
-    def get_redirect_uris(self):
-        """获取重定向URI列表"""
-        return json.loads(self.redirect_uris)
-
-    def set_redirect_uris(self, uris):
-        """设置重定向URI列表"""
-        if isinstance(uris, str):
-            uris = [uris]
-        self.redirect_uris = json.dumps(list(uris))
+        self.created_by = created_by
+        self.redirect_uri = redirect_uri
+        self.is_active = True
 
     def to_dict(self):
         """转换为字典格式"""
         return {
             'client_id': self.client_id,
             'name': self.name,
-            'redirect_uris': self.get_redirect_uris(),
+            'redirect_uri': self.redirect_uri,
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
-            'is_active': self.is_active
+            'is_active': self.is_active,
+            'created_by': self.created_by
         }
 
     @staticmethod
-    def create_client(name, redirect_uris):
+    def create_client(name, redirect_uri, created_by):
         """创建新的OAuth客户端"""
-        client = OAuthClient(name=name, redirect_uris=redirect_uris)
+        client = OAuthClient(name=name, redirect_uri=redirect_uri, created_by=created_by)
         db.session.add(client)
         db.session.commit()
         return client
@@ -58,4 +53,4 @@ class OAuthClient(db.Model):
 
     def validate_redirect_uri(self, redirect_uri):
         """验证重定向URI是否合法"""
-        return redirect_uri in self.get_redirect_uris()
+        return redirect_uri == self.redirect_uri
