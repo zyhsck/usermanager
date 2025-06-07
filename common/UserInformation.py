@@ -111,7 +111,8 @@ class UserInformation:
                 "location": user.location,
                 "website": user.website,
                 "usericon_url": user.usericon_url,
-                "last_login": user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else None
+                "last_login": user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else None,
+                "api_token": user.api_token
             }
         return None
 

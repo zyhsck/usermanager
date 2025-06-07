@@ -1,0 +1,29 @@
+# Core Framework
+Flask>=2.0.0
+Werkzeug>=2.0.0
+
+# Database
+Flask-SQLAlchemy>=3.0.0
+Flask-Migrate>=4.0.0
+
+# Authentication & Security
+Flask-Login>=0.6.0
+PyJWT>=2.4.0
+
+# Session Management
+redis>=4.0.0
+Flask-Session>=0.5.0
+
+# Internationalization
+Flask-Babel>=3.0.0
+
+# Server
+gunicorn>=20.1.0
+uwsgi>=2.0.0
+
+# Environment Variables
+python-dotenv>=0.20.0
+
+# Utilities
+requests>=2.28.0
+click>=8.0.0

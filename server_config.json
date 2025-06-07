@@ -1,0 +1,14 @@
+{
+  "smtp_settings": {
+    "server": "",
+    "port": 587,
+    "username": "",
+    "use_tls": true,
+    "from_email": "",
+    "enabled": false
+  },
+  "server_settings": {
+    "port": 5004,
+    "server_token": "zyhisgood"
+  }
+}

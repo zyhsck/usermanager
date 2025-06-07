@@ -1,56 +1,63 @@
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import inspect, text
+"""
+数据库设置和迁移管理模块
 
-# 创建SQLAlchemy实例，但不立即初始化
-db = SQLAlchemy()
+这个模块负责：
+- 初始化SQLAlchemy
+- 设置数据库连接
+- 管理数据库迁移
+"""
+
+from flask_migrate import Migrate
+import logging
+from pathlib import Path
+from .db_instance import db  # 使用相对导入
+from models import UserData  # 从根目录导入UserData模型
+
+# 确保模型被导入
+__all__ = ['UserData']
+
+# 初始化迁移
+migrate = Migrate()
 
 def init_db(app):
     """
-    初始化数据库
+    初始化数据库连接和配置
     
     Args:
         app: Flask应用实例
     """
-    # 初始化SQLAlchemy
-    db.init_app(app)
-    
-    # 导入模型以确保SQLAlchemy知道它们
-    from common.UserInformation import UserApply
-    
-    with app.app_context():
-        try:
-            # 创建所有数据库表
+    try:
+        # 确保instance目录存在
+        Path(app.instance_path).mkdir(parents=True, exist_ok=True)
+        
+        # 初始化数据库
+        db.init_app(app)
+        
+        # 初始化迁移
+        migrate.init_app(app, db, directory='migrations')
+        
+        # 在应用上下文中创建所有表
+        with app.app_context():
             db.create_all()
             
-            # 确保用户申请表存在
-            engine = db.get_engine(bind='apply_db')
-            inspector = inspect(engine)
-            
-            if not inspector.has_table("user_apply"):
-                print("Creating user_apply table...")
-                db.create_all(bind='apply_db')
-            
-            # 确保用户申请表包含所有必要的列
-            columns = [col["name"] for col in inspector.get_columns("user_apply")]
-            
-            # 添加缺失的列
-            if "status" not in columns:
-                with engine.connect() as conn:
-                    conn.execute(text(
-                        "ALTER TABLE user_apply ADD COLUMN status BOOLEAN DEFAULT NULL"
-                    ))
-                    conn.commit()
-            
-            if "time" not in columns:
-                with engine.connect() as conn:
-                    conn.execute(text(
-                        "ALTER TABLE user_apply ADD COLUMN time DATETIME DEFAULT CURRENT_TIMESTAMP"
-                    ))
-                    conn.commit()
-                    
-        except Exception as e:
-            print(f"Database initialization error: {e}")
-            # 在开发环境中可以重新创建表
-            if app.debug:
-                db.drop_all(bind='apply_db')
-                db.create_all(bind='apply_db')
+        logging.info("数据库初始化成功")
+        
+    except Exception as e:
+        logging.error(f"数据库初始化失败: {e}")
+        raise
+
+def run_migrations(app):
+    """
+    运行所有待处理的数据库迁移
+    
+    Args:
+        app: Flask应用实例
+    """
+    try:
+        with app.app_context():
+            migrate.upgrade()
+        logging.info("数据库迁移完成")
+        
+    except Exception as e:
+        logging.error(f"数据库迁移失败: {e}")
+        raise

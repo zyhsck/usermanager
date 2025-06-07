@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}用户数据管理{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>用户数据管理</h2>
+    
+    <div class="mb-3">
+        <button type="button" style="width: 15%;" class="btn btn-primary" id="addDataBtn" data-bs-toggle="modal" data-bs-target="#dataModal">
+            <i class="fas fa-plus"></i> 添加数据
+        </button>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="confirmDeleteModalLabel">确认删除</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭确认删除窗口"></button>
+                </div>
+                <div class="modal-body">
+                    确定要删除这条数据吗？这个操作不可撤销。
+                    <input type="hidden" id="deleteUsername" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据弹窗 -->
+    <div class="modal fade" id="dataModal" tabindex="-1" role="dialog" aria-labelledby="dataModalLabel">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="dataModalLabel">
+                        <i class="fas fa-database me-2"></i>数据管理
+                    </h5>
+                    <button type="button" class="btn-close text-white" data-bs-dismiss="modal" aria-label="关闭数据管理窗口"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="dataForm" class="form-horizontal">
+                        <div class="form-group row">
+                            <label for="username" class="col-sm-3 col-form-label">用户名</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control" id="username" 
+                                       value="{{ username }}" {{ 'readonly' if not session.admin else '' }}>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="dataKey" class="col-sm-3 col-form-label">数据键</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control" id="dataKey" required>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="dataValue" class="col-sm-3 col-form-label">数据值</label>
+                            <div class="col-sm-9">
+                                <textarea class="form-control" id="dataValue" rows="5" required></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>取消
+                    </button>
+                    <button type="button" class="btn btn-primary" id="submitData">
+                        <i class="fas fa-save me-1"></i>保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>数据列表</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped" role="grid" aria-label="用户数据列表">
+                    <thead>
+                        <tr role="row">
+                            <th role="columnheader" scope="col">用户名</th>
+                            <th role="columnheader" scope="col">数据键</th>
+                            <th role="columnheader" scope="col">数据值</th>
+                            <th role="columnheader" scope="col">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        {% for data in user_data %}
+                            <tr role="row">
+                                <td role="cell">{{ data.user_id }}</td>
+                                <td role="cell">{{ data.data_key }}</td>
+                                <td role="cell">{{ data.data_value }}</td>
+                                <td role="cell">
+                                    <button class="btn btn-sm btn-primary edit-btn" 
+                                            data-user="{{ data.user_id }}" 
+                                            data-key="{{ data.data_key }}" 
+                                            data-value="{{ data.data_value }}"
+                                            aria-label="编辑 {{ data.data_key }} 数据">
+                                        <i class="fas fa-edit me-1"></i>编辑
+                                    </button>
+                                    <button class="btn btn-sm btn-danger delete-btn" 
+                                            data-user="{{ data.user_id }}" 
+                                            data-key="{{ data.data_key }}"
+                                            aria-label="删除 {{ data.data_key }} 数据">
+                                        <i class="fas fa-trash me-1"></i>删除
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="actions">
+                <a href="{{ url_for('dashboard') }}">{{ _("返回仪表盘") }}</a>
+            </div>
+            <!-- 注意：所有功能已移至user_data.js中实现 -->
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/user_data.js') }}?v={{ CACHE_VERSION }}"></script>
+{% endblock %}

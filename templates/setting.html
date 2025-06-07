@@ -51,7 +51,7 @@
                             <td>
                                 <div class="avatar-container">
                                     {% if user_info.usericon_url %}
-                                    <img src="{{ user_info.usericon_url }}" alt="头像" class="avatar-preview">
+                                    <img style="width: 64px; height: 64px" src="{{ user_info.usericon_url }}" alt="头像" class="avatar-preview">
                                     {% else %}
                                     <div class="avatar-placeholder">无头像</div>
                                     {% endif %}
@@ -120,7 +120,7 @@
                 <button type="button" onclick="saveProfile()">{{ _("保存个人信息") }}</button>
             </form>
         </div>
-
+        {% if session.admin %}
         <div id="ServerInfo" class="settings-content" style="display: none;">
             <form id="serverConfigForm">
                 <table class="audit-table">
@@ -258,7 +258,7 @@
                 <button type="button" onclick="saveServerConfig()">{{ _("保存服务器设置") }}</button>
             </form>
         </div>
-
+        {% endif %}
         <div id="OAuthClients" class="settings-content" style="display: none;">
             <div class="oauth-clients-container">
                 <h3>OAuth客户端管理</h3>
@@ -311,7 +311,7 @@
                 </div>
             </div>
         </div>
-
+        
         <div class="actions">
             <a href="{{ url_for('dashboard') }}">{{ _("返回仪表盘") }}</a>
         </div>

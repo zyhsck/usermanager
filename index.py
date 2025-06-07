@@ -1,9 +1,12 @@
 from flask import Flask, render_template, redirect, url_for, session, request, jsonify, make_response
 from flask_cors import CORS
+from flask_babel import Babel, gettext as _, ngettext
 from werkzeug.utils import secure_filename
 import logging
 import os
 from uuid import uuid4
+from functools import wraps
+from common.config import load_server_config
 
 # 配置日志
 logging.basicConfig(
@@ -14,8 +17,33 @@ logging.basicConfig(
 # 创建Flask应用
 app = Flask(__name__)
 
+# 初始化Babel
+babel = Babel(app)
+
+# 配置支持的语言
+app.config['BABEL_DEFAULT_LOCALE'] = 'zh'
+app.config['BABEL_LANGUAGES'] = ['zh', 'en']
+app.config['BABEL_TRANSLATION_DIRECTORIES'] = 'translations'
+
+def get_locale():
+    # 优先从cookie中获取语言设置
+    if request.cookies.get('lang'):
+        return request.cookies.get('lang')
+    # 如果cookie中没有，则从请求头中获取
+    return request.accept_languages.best_match(app.config['BABEL_LANGUAGES'])
+
+babel.localeselector_func = get_locale
+
+# 添加翻译函数到模板全局变量
+app.jinja_env.add_extension('jinja2.ext.i18n')
+app.jinja_env.install_gettext_callables(
+    gettext=_,
+    ngettext=ngettext,
+    newstyle=True
+)
+
 # 加载配置
-from common.Config import init_app
+from common.config import init_app
 init_app(app)
 
 # 初始化数据库
@@ -25,6 +53,7 @@ init_db(app)
 # 导入模型和功能模块
 from common.UserInformation import UserInformation, UserApply
 from common.token_manager import TokenManager
+from models import User
 
 # 确保上传目录存在
 if not os.path.exists('static/uploads'):
@@ -105,7 +134,7 @@ def login():
                     'access_token': access_token,
                     'refresh_token': refresh_token,
                     'token_type': 'Bearer',
-                    'expires_in': int(current_app.config['OAUTH_TOKEN_EXPIRES'].total_seconds()),
+                    'expires_in': int(app.config['OAUTH_TOKEN_EXPIRES'].total_seconds()),
                     'state': state
                 })
                 url_parts[4] = urlencode(query)
@@ -141,8 +170,8 @@ def dashboard():
     username = session.get("username")
     vip = session.get("vip")
     admin = session.get("admin")
-
-    return render_template("dashboard.html", username=username, vip=vip, admin=admin)
+    userdata = UserInformation.get_user_info(username)
+    return render_template("dashboard.html", username=username, vip=vip, admin=admin, userdata=userdata)
 
 @app.route('/apply', methods=["GET", "POST"])
 def apply():
@@ -393,22 +422,44 @@ def update_server_config():
         config = request.json
         
         # 更新服务器配置
-        # 这里需要根据实际情况实现配置更新逻辑
-        # 例如：更新应用配置、数据库配置等
+        from common.config import Config
+        
+        # 更新应用配置
+        if 'app_settings' in config:
+            app_settings = config['app_settings']
+            Config.update_app_config(
+                debug=app_settings.get('debug'),
+                secret_key=app_settings.get('secret_key'),
+                session_lifetime=app_settings.get('session_lifetime')
+            )
+        
+        # 更新数据库配置
+        if 'database_settings' in config:
+            db_settings = config['database_settings']
+            Config.update_db_config(
+                db_url=db_settings.get('db_url'),
+                db_pool_size=db_settings.get('pool_size')
+            )
         
         # 更新SMTP设置
         if 'smtp_settings' in config:
             smtp = config['smtp_settings']
-            app.config['MAIL_SERVER'] = smtp.get('server')
-            app.config['MAIL_PORT'] = smtp.get('port')
-            app.config['MAIL_USERNAME'] = smtp.get('username')
-            if smtp.get('password') and smtp.get('password') != '********':
-                app.config['MAIL_PASSWORD'] = smtp.get('password')
-            app.config['MAIL_USE_TLS'] = smtp.get('use_tls', False)
-            app.config['MAIL_DEFAULT_SENDER'] = smtp.get('from_email')
+            Config.update_smtp_config(
+                server=smtp.get('server'),
+                port=smtp.get('port'),
+                username=smtp.get('username'),
+                password=smtp.get('password') if smtp.get('password') != '********' else None,
+                use_tls=smtp.get('use_tls', False),
+                from_email=smtp.get('from_email')
+            )
         
-        # 保存配置到配置文件或数据库
-        # 这里需要根据实际情况实现配置持久化
+        # 更新Redis配置
+        if 'redis_settings' in config:
+            redis = config['redis_settings']
+            Config.update_redis_config(
+                url=redis.get('url'),
+                password=redis.get('password') if redis.get('password') != '********' else None
+            )
         
         return jsonify({"message": "服务器配置已更新"})
         
@@ -502,6 +553,702 @@ def manage_oauth_clients():
         logging.error(f"管理OAuth客户端失败: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/user_data_manage')
+def user_data_manage():
+    """用户数据管理页面"""
+    if not session.get("IsLogin"):
+        return redirect(url_for("login"))
+    if not session.get("admin"):
+        return redirect(url_for("home"))
+    
+    from models import UserData
+    all_data = UserData.query.all()
+    
+    # 将SQLAlchemy对象转换为字典列表
+    formatted_data = [
+        {
+            'id': data.id,
+            'user_id': data.user_id,
+            'data_key': data.data_key,
+            'data_value': data.data_value,
+            'created_at': data.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': data.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        for data in all_data
+    ]
+    
+    return render_template('user_data_manage.html', 
+                         user_data=formatted_data,
+                         username=session.get("username"))
+
+@app.route('/api/user_data', methods=['GET', 'POST', 'DELETE'])
+def handle_user_data():
+    """
+    用户数据API接口处理函数
+    ---
+    支持GET/POST/DELETE方法，用于操作用户数据
+    GET:
+      - 普通用户: 获取自己的数据(可指定key获取单个数据)
+      - 管理员: 获取所有用户数据(需admin=true参数)
+    POST:
+      - 添加/更新用户数据(需提供key和value参数)
+    DELETE:
+      - 普通用户: 删除自己的数据(需key参数)
+      - 管理员: 删除指定用户数据(需admin=true和username参数)
+    权限控制:
+      - 需登录(session中IsLogin为true)
+      - 管理员操作需session中admin为true
+    返回格式:
+      - 成功: JSON格式数据
+      - 失败: JSON格式错误信息及状态码
+    错误码:
+      - 400: 参数错误
+      - 401: 未登录
+      - 403: 权限不足
+      - 404: 数据不存在
+      - 500: 服务器错误
+    """
+    """
+    用户数据API接口
+    ---
+    tags:
+      - 用户数据
+    parameters:
+      - name: key
+        in: query
+        type: string
+        required: false
+        description: 数据键名
+      - name: username
+        in: query
+        type: string
+        required: false
+        description: 目标用户名(仅管理员可用)
+      - name: admin
+        in: query
+        type: boolean
+        required: false
+        description: 是否管理员操作
+
+    
+    if not session.get("IsLogin"):
+        return jsonify({"error": "未登录"}), 401
+    """
+    from models import UserData, db
+    username = session.get("username")
+    is_admin = session.get("admin")
+    server_info = load_server_config()
+    # 检查server_token
+    if request.is_json:
+        data = request.json
+        server_token = data.get('server_token')
+        if server_token:
+            try:
+                
+                if server_info and server_info.get('server_settings', {}).get('server_token') == server_token:
+                    is_admin = True
+                    username = data.get('username')  # 使用请求中的username
+                    if not username:
+                        return jsonify({"error": "使用server_token时必须提供username"}), 400
+            except Exception as e:
+                logging.error(f"验证server_token时出错: {e}")
+                return jsonify({"error": f"验证server_token时出错: {str(e)}"}), 500
+    
+    if request.args.get('server_token'):
+        if request.args.get('server_token') == server_info.get('server_settings', {}).get('server_token'):
+            is_admin = True
+            username = request.args.get('username')  # 使用URL参数中的username
+            if not username:
+                return jsonify({"error": "使用server_token时必须提供username"}), 400
+
+    try:
+        if request.method == 'GET':
+            # 获取数据
+            data_key = request.args.get('key')
+            # 获取查询参数
+            target_username = request.args.get('username')
+
+            if is_admin:
+                if target_username:
+                    # 管理员查看指定用户的数据
+                    user_exists = UserInformation.get_user_info(target_username)
+                    if not user_exists:
+                        return jsonify({"error": f"用户 {target_username} 不存在"}), 404
+                    user_data = UserData.query.filter_by(user_id=target_username).all()
+                else:
+                    # 管理员查看所有数据
+                    user_data = UserData.query.all()
+                
+                if user_data is None:
+                    return jsonify({"error": "获取数据失败"}), 500
+                
+                # 尝试将JSON字符串转换回字典
+                formatted_data = []
+                for data in user_data:
+                    try:
+                        import json
+                        data_value = data.data_value
+                        if data_value and isinstance(data_value, str) and data_value.strip().startswith('{'):
+                            data_value = json.loads(data_value)
+                    except json.JSONDecodeError:
+                        # 如果不是有效的JSON字符串，保持原样
+                        data_value = data.data_value
+
+                    formatted_data.append({
+                        'id': data.id,
+                        'user_id': data.user_id,
+                        'data_key': data.data_key,
+                        'data_value': data_value,
+                        'created_at': data.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        'updated_at': data.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                    })
+                return jsonify(formatted_data)
+            else:
+                # 普通用户获取自己的数据
+                if data_key:
+                    user_data = UserData.query.filter_by(user_id=username, data_key=data_key).first()
+                    api_token = request.args.get('api_token')
+                    if api_token != UserInformation.get_user_info(username).get('api_token'):
+                        return jsonify({"error": "API Token错误"}), 403
+                    if user_data is None:
+                        return jsonify({"error": "数据不存在"}), 404
+                    # 尝试将JSON字符串转换回字典
+                    try:
+                        import json
+                        data_value = user_data.data_value
+                        if data_value and isinstance(data_value, str) and data_value.strip().startswith('{'):
+                            data_value = json.loads(data_value)
+                    except json.JSONDecodeError:
+                        # 如果不是有效的JSON字符串，保持原样
+                        data_value = user_data.data_value
+
+                    return jsonify({
+                        'id': user_data.id,
+                        'user_id': user_data.user_id,
+                        'data_key': user_data.data_key,
+                        'data_value': data_value,
+                        'created_at': user_data.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        'updated_at': user_data.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                    })
+                else:
+                    user_data = UserData.query.filter_by(user_id=username).all()
+                    return jsonify([{
+                        'id': data.id,
+                        'user_id': data.user_id,
+                        'data_key': data.data_key,
+                        'data_value': data.data_value,
+                        'created_at': data.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        'updated_at': data.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                    } for data in user_data])
+                
+        elif request.method == 'POST':
+            # 添加/更新数据
+            data = request.json
+            if not data or 'key' not in data or 'value' not in data:
+                return jsonify({"error": "缺少必要参数"}), 400
+            
+            # 确保用户已登录且username不为空
+            if not username and not is_admin:
+                return jsonify({"error": "用户未正确登录"}), 401
+           
+            # 数据验证
+            if len(data['key']) > 50:
+                return jsonify({"error": "键名过长(最大50字符)"}), 400
+            if len(data['value']) > 1000:
+                return jsonify({"error": "数据值过长(最大1000字符)"}), 400
+                
+            try:
+                # 确定操作的用户
+                target_username = data.get('username') if is_admin else username
+                if not target_username:
+                    target_username = username
+                
+                # 确保target_username不为None
+                if target_username is None:
+                    return jsonify({"error": "用户名不能为空"}), 400
+
+                # 如果使用server_token，直接使用提供的username
+                if server_token and server_token == server_info.get('server_settings', {}).get('server_token'):
+                    target_username = data.get('username')
+                    if not target_username:
+                        return jsonify({"error": "使用server_token时必须提供username"}), 400
+                
+                # 检查用户是否存在
+                user_exists = UserInformation.get_user_info(target_username)
+                if not user_exists:
+                    return jsonify({"error": f"用户 {target_username} 不存在"}), 404
+                if is_admin:
+                    api_token = request.args.get('api_token')
+                    if api_token != UserInformation.get_user_info(username).get('api_token'):
+                        return jsonify({"error": "API Token错误"}), 403
+                # 使用用户名作为用户ID
+                target_user_id = target_username
+
+                import json  # 将json导入移到这里
+                
+                # 处理特殊键
+                if data['key'] == 'profile':
+                    # 确保value是字典类型
+                    if not isinstance(data['value'], dict):
+                        return jsonify({"error": "profile值必须是字典类型"}), 400
+                    
+                    # 获取现有用户数据
+                    user_data = UserData.query.filter_by(user_id=target_username, data_key='profile').first()
+                    if user_data:
+                        try:
+                            current_profile = json.loads(user_data.data_value) if user_data.data_value else {}
+                        except json.JSONDecodeError:
+                            current_profile = {}
+                    else:
+                        current_profile = {}
+                    
+                    # 更新profile
+                    current_profile.update(data['value'])
+                    data_value = json.dumps(current_profile)
+                
+                    # 更新或创建用户数据记录
+                    if user_data:
+                        user_data.data_value = data_value
+                    else:
+                        user_data = UserData(
+                            user_id=target_username,
+                            data_key='profile',
+                            data_value=data_value
+                        )
+                        db.session.add(user_data)
+                
+                    try:
+                        db.session.commit()
+                        return jsonify({
+                            "success": True,
+                            "message": "数据保存成功",
+                            "data": {
+                                "username": target_username,
+                                "key": data['key'],
+                                "profile": current_profile
+                            }
+                        }), 200
+                    except Exception as e:
+                        db.session.rollback()
+                        return jsonify({"error": f"保存数据失败: {str(e)}"}), 500
+                else:
+                    # 将字典类型的value转换为JSON字符串
+                    data_value = data['value']
+                    if isinstance(data_value, (dict, list)):
+                        data_value = json.dumps(data_value)
+                    elif not isinstance(data_value, str):
+                        data_value = str(data_value)
+                    
+                    # 更新或创建普通用户数据记录
+                    user_data = UserData.query.filter_by(
+                        user_id=target_username,
+                        data_key=data['key']
+                    ).first()
+                    
+                    if user_data:
+                        user_data.data_value = data_value
+                    else:
+                        user_data = UserData(
+                            user_id=target_username,
+                            data_key=data['key'],
+                            data_value=data_value
+                        )
+                        db.session.add(user_data)
+                    
+                    try:
+                        db.session.commit()
+                        return jsonify({
+                            "success": True,
+                            "message": "数据保存成功",
+                            "data": {
+                                "username": target_username,
+                                "key": data['key'],
+                                "value": data['value']
+                            }
+                        }), 200
+                    except Exception as e:
+                        db.session.rollback()
+                        return jsonify({"error": f"保存数据失败: {str(e)}"}), 500
+
+                # 尝试更新现有数据
+                user_data = UserData.query.filter_by(user_id=target_username, data_key=data['key']).first()
+                if user_data:
+                    user_data.data_value = data_value
+                else:
+                    # 使用UserData的add_data方法添加数据
+                    result = UserData.add_data(
+                        user_id=target_user_id,
+                        data_key=data['key'],
+                        data_value=data_value
+                    )
+                    
+                    if isinstance(result, dict) and 'error' in result:
+                        return jsonify(result), 400
+                
+                db.session.commit()
+                return jsonify({
+                    "message": "数据操作成功",
+                    "data": {
+                        "id": user_data.id,
+                        "user_id": user_data.user_id,
+                        "data_key": user_data.data_key,
+                        "data_value": user_data.data_value,
+                        "created_at": user_data.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                        "updated_at": user_data.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                })
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({"error": f"数据操作失败: {str(e)}"}), 400
+            
+        elif request.method == 'DELETE':
+            # 删除数据
+            data_key = request.args.get('key')
+            if not data_key:
+                return jsonify({"error": "缺少key参数"}), 400
+            api_token = request.args.get('api_token')
+            if api_token != UserInformation.get_user_info(username).get('api_token'):
+                return jsonify({"error": "API Token错误"}), 403
+            try:
+                # 确定操作的用户
+                target_username = request.args.get('username') if is_admin else username
+                if not target_username:
+                    target_username = username
+
+                # 如果是管理员操作其他用户的数据，确保用户存在
+                if is_admin and target_username != username:
+                    user_exists = UserInformation.get_user_info(target_username)
+                    if not user_exists:
+                        return jsonify({"error": f"用户 {target_username} 不存在"}), 404
+
+                # 查找要删除的数据
+                user_data = UserData.query.filter_by(user_id=target_username, data_key=data_key).first()
+                
+                if user_data:
+                    db.session.delete(user_data)
+                    db.session.commit()
+                    return jsonify({
+                        "message": f"用户{target_username}数据{data_key}删除成功",
+                        "data": None
+                    })
+                else:
+                    return jsonify({
+                        "error": f"用户{target_username}数据{data_key}不存在,注意需要server_token才能删除其他用户",
+                        "data": None
+                    }), 404
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({
+                    "error": f"数据删除失败: {str(e)}",
+                    "data": None
+                }), 400
+            
+    except Exception as e:
+        logging.error(f"用户数据操作失败: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/user_data/bulk', methods=['POST', 'DELETE'])
+def handle_bulk_user_data():
+    """
+    批量操作用户数据API端点
+    
+    支持POST和DELETE方法，用于批量添加/更新/删除用户数据
+    
+    POST请求:
+    - 参数: operations数组，包含多个操作对象
+    - 每个操作对象必须包含:
+      - key: 数据键名(最大50字符)
+      - value: 数据值(最大1000字符)
+      - action: 操作类型(add/update/delete/get)
+    - 返回: 操作结果统计和失败详情
+    
+    DELETE请求:
+    - 参数: operations数组或直接是键名列表
+    - 每个操作对象必须包含:
+      - key: 要删除的数据键名
+      - action: 必须为'delete'
+    - 返回: 删除结果统计和失败详情
+    
+    错误码:
+    - 400: 参数错误
+    - 401: 未登录
+    - 403: 权限不足
+    - 500: 服务器错误
+    """
+    """
+    批量操作用户数据
+    ---
+    tags:
+      - 用户数据
+    parameters:
+      - name: payload
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            operations:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  value:
+                    type: string
+                  action:
+                    type: string
+                    enum: [add, update, delete]
+    responses:
+      200:
+        description: 操作成功
+      400:
+        description: 参数错误
+      401:
+        description: 未登录
+      403:
+        description: 权限不足
+      500:
+        description: 服务器错误
+    """
+    if not session.get("IsLogin"):
+        return jsonify({"error": "未登录"}), 401
+    
+    from models import UserData, db
+    username = session.get("username")
+    
+    # 确保username不为空
+    if username is None:
+        return jsonify({"error": "用户未正确登录"}), 401
+    
+    try:
+        if request.method == 'POST':
+            # 批量添加数据
+            data = request.json
+            if not data or 'operations' not in data:
+                return jsonify({"error": "缺少operations参数"}), 400
+            
+            data_list = data['operations']
+            if not isinstance(data_list, list):
+                return jsonify({"error": "operations必须是数组"}), 400
+                
+            # 数据验证
+            for item in data_list:
+                if not isinstance(item, dict) or 'key' not in item or 'value' not in item or 'action' not in item:
+                    return jsonify({"error": "数据格式错误，每个操作必须包含key、value和action字段"}), 400
+                if item['action'] not in ['add', 'update']:
+                    continue
+                if len(item['key']) > 50:
+                    return jsonify({"error": f"键名过长(最大50字符): {item['key']}"}), 400
+                if len(item['value']) > 1000:
+                    return jsonify({"error": f"数据值过长(最大1000字符): {item['key']}"}), 400
+            
+            success_count = 0
+            failed_operations = []
+            try:
+                for item in data_list:
+                    try:
+                        if item['action'] == 'get':
+                            # 获取数据
+                            user_data = UserData.query.filter_by(user_id=username, data_key=item['key']).first()
+                            if user_data:
+                                item['result'] = {
+                                    'id': user_data.id,
+                                    'user_id': user_data.user_id,
+                                    'data_key': user_data.data_key,
+                                    'data_value': user_data.data_value,
+                                    'created_at': user_data.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                                    'updated_at': user_data.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                                }
+                                success_count += 1
+                            else:
+                                failed_operations.append({
+                                    'key': item['key'],
+                                    'error': '数据不存在'
+                                })
+                        elif item['action'] in ['add', 'update']:
+                            # 尝试更新现有数据
+                            user_data = UserData.query.filter_by(user_id=username, data_key=item['key']).first()
+                            if user_data and item['action'] == 'add':
+                                # 如果是添加操作但数据已存在
+                                failed_operations.append({
+                                    'key': item['key'],
+                                    'error': '数据已存在'
+                                })
+                                continue
+                            elif not user_data and item['action'] == 'update':
+                                # 如果是更新操作但数据不存在
+                                failed_operations.append({
+                                    'key': item['key'],
+                                    'error': '数据不存在'
+                                })
+                                continue
+                            
+                            # 将字典类型的value转换为JSON字符串
+                            data_value = item['value']
+                            if isinstance(data_value, (dict, list)):
+                                import json
+                                data_value = json.dumps(data_value)
+                            elif not isinstance(data_value, str):
+                                data_value = str(data_value)
+
+                            if user_data:
+                                user_data.data_value = data_value
+                            else:
+                                # 检查用户是否存在
+                                user_exists = UserInformation.get_user_info(username)
+                                if not user_exists:
+                                    failed_operations.append({
+                                        'key': item['key'],
+                                        'error': f"用户 {username} 不存在"
+                                    })
+                                    continue
+
+                                # 使用UserData的add_data方法添加数据
+                                result = UserData.add_data(
+                                    user_id=username,
+                                    data_key=item['key'],
+                                    data_value=data_value
+                                )
+                            
+                                if isinstance(result, dict) and 'error' in result:
+                                    failed_operations.append({
+                                        'key': item['key'],
+                                        'error': result['error']
+                                    })
+                                    continue
+                            success_count += 1
+                            
+                            # 返回操作结果
+                            item['result'] = {
+                                'id': user_data.id,
+                                'user_id': user_data.user_id,
+                                'data_key': user_data.data_key,
+                                'data_value': user_data.data_value,
+                                'created_at': user_data.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                                'updated_at': user_data.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                            }
+                    except Exception as op_error:
+                        failed_operations.append({
+                            'key': item['key'],
+                            'error': str(op_error)
+                        })
+                
+                db.session.commit()
+                return jsonify({
+                    "message": f"批量操作完成，成功 {success_count} 条，失败 {len(failed_operations)} 条",
+                    "success_count": success_count,
+                    "total_count": len(data_list),
+                    "failed_operations": failed_operations
+                })
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({
+                    "error": f"批量操作失败: {str(e)}",
+                    "success_count": success_count,
+                    "total_count": len(data_list),
+                    "failed_operations": failed_operations
+                }), 400
+            
+        elif request.method == 'DELETE':
+            # 批量删除数据
+            data = request.json
+            if not data or 'operations' not in data:
+                # 兼容旧格式，直接是键名列表的情况
+                keys = request.json
+                if not isinstance(keys, list):
+                    return jsonify({"error": "请求体必须是数组或包含operations数组的对象"}), 400
+                
+                success_count = 0
+                failed_operations = []
+                try:
+                    for key in keys:
+                        try:
+                            user_data = UserData.query.filter_by(user_id=username, data_key=key).first()
+                            if user_data:
+                                db.session.delete(user_data)
+                                success_count += 1
+                            else:
+                                failed_operations.append({
+                                    'key': key,
+                                    'error': '数据不存在'
+                                })
+                        except Exception as op_error:
+                            failed_operations.append({
+                                'key': key,
+                                'error': str(op_error)
+                            })
+                    
+                    db.session.commit()
+                    return jsonify({
+                        "message": f"批量删除完成，成功 {success_count} 条，失败 {len(failed_operations)} 条",
+                        "success_count": success_count,
+                        "total_count": len(keys),
+                        "failed_operations": failed_operations
+                    })
+                except Exception as e:
+                    db.session.rollback()
+                    return jsonify({
+                        "error": f"批量删除失败: {str(e)}",
+                        "success_count": success_count,
+                        "total_count": len(keys),
+                        "failed_operations": failed_operations
+                    }), 400
+            else:
+                # 新格式，使用operations数组
+                data_list = data['operations']
+                if not isinstance(data_list, list):
+                    return jsonify({"error": "operations必须是数组"}), 400
+                
+                success_count = 0
+                failed_operations = []
+                try:
+                    for item in data_list:
+                        if not isinstance(item, dict) or 'key' not in item or 'action' not in item:
+                            failed_operations.append({
+                                'error': '数据格式错误，每个操作必须包含key和action字段'
+                            })
+                            continue
+                        
+                        if item['action'] != 'delete':
+                            continue
+                        
+                        try:
+                            user_data = UserData.query.filter_by(user_id=username, data_key=item['key']).first()
+                            if user_data:
+                                db.session.delete(user_data)
+                                success_count += 1
+                            else:
+                                failed_operations.append({
+                                    'key': item['key'],
+                                    'error': '数据不存在'
+                                })
+                        except Exception as op_error:
+                            failed_operations.append({
+                                'key': item['key'],
+                                'error': str(op_error)
+                            })
+                    
+                    db.session.commit()
+                    return jsonify({
+                        "message": f"批量删除完成，成功 {success_count} 条，失败 {len(failed_operations)} 条",
+                        "success_count": success_count,
+                        "total_count": len(data_list),
+                        "failed_operations": failed_operations
+                    })
+                except Exception as e:
+                    db.session.rollback()
+                    return jsonify({
+                        "error": f"批量删除失败: {str(e)}",
+                        "success_count": success_count,
+                        "total_count": len(data_list),
+                        "failed_operations": failed_operations
+                    }), 400
+            
+    except Exception as e:
+        logging.error(f"批量操作用户数据失败: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/<string:api_post>', methods=["POST"])
 def api(api_post):
     username = request.json.get('username')
@@ -556,4 +1303,4 @@ CORS(app, resources={
 })
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(port=5004, debug=True)

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-05-17 17:37+0800\n"
+"POT-Creation-Date: 2025-06-01 17:22+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,85 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
+
+#: templates/apply.html:20 templates/apply_change.html:26
+msgid "申请权限"
+msgstr ""
+
+#: templates/apply.html:27
+msgid "请选择要申请的权限："
+msgstr ""
+
+#: templates/apply.html:30
+msgid "管理员"
+msgstr ""
+
+#: templates/apply.html:31
+msgid "API 使用权"
+msgstr ""
+
+#: templates/apply.html:34
+msgid "提交申请"
+msgstr ""
+
+#: templates/apply.html:38 templates/apply_change.html:72
+#: templates/setting.html:316 templates/user_manage.html:57
+msgid "返回仪表盘"
+msgstr ""
+
+#: templates/apply_change.html:12
+msgid "权限申请审核"
+msgstr ""
+
+#: templates/apply_change.html:24
+msgid "申请时间"
+msgstr ""
+
+#: templates/apply_change.html:25 templates/login.html:20
+#: templates/sign.html:14 templates/user_manage.html:29
+#: templates/user_manage.html:67 templates/user_manage.html:88
+msgid "用户名"
+msgstr ""
+
+#: templates/apply_change.html:27
+msgid "状态"
+msgstr ""
+
+#: templates/apply_change.html:28
+msgid "申请理由"
+msgstr ""
+
+#: templates/apply_change.html:29 templates/user_manage.html:31
+msgid "操作"
+msgstr ""
+
+#: templates/apply_change.html:41
+msgid "待审核"
+msgstr ""
+
+#: templates/apply_change.html:43
+msgid "已通过"
+msgstr ""
+
+#: templates/apply_change.html:45
+msgid "已拒绝"
+msgstr ""
+
+#: templates/apply_change.html:54
+msgid "通过"
+msgstr ""
+
+#: templates/apply_change.html:55
+msgid "拒绝"
+msgstr ""
+
+#: templates/apply_change.html:61
+msgid "是"
+msgstr ""
+
+#: templates/apply_change.html:62
+msgid "否"
+msgstr ""
 
 #: templates/index.html:6
 msgid "主页"
@@ -25,23 +104,109 @@ msgstr ""
 msgid "登录界面"
 msgstr ""
 
-#: templates/login.html:9 templates/login.html:13
+#: templates/login.html:13 templates/login.html:22
 msgid "登录"
 msgstr ""
 
-#: templates/login.html:11 templates/sign.html:11
-msgid "用户名"
+#: templates/login.html:16
+msgid "第三方应用请求访问您的账户"
 msgstr ""
 
-#: templates/login.html:12 templates/sign.html:12
+#: templates/login.html:17
+msgid "登录后将自动授权访问"
+msgstr ""
+
+#: templates/login.html:21 templates/sign.html:15 templates/user_manage.html:91
 msgid "密码"
+msgstr ""
+
+#: templates/login.html:24
+msgid "还未注册?"
+msgstr ""
+
+#: templates/login.html:24 templates/sign.html:13 templates/sign.html:16
+msgid "注册"
+msgstr ""
+
+#: templates/setting.html:12
+msgid "设置界面"
+msgstr ""
+
+#: templates/setting.html:42 templates/setting.html:129
+msgid "选项"
+msgstr ""
+
+#: templates/setting.html:43 templates/setting.html:130
+msgid "说明"
+msgstr ""
+
+#: templates/setting.html:44 templates/setting.html:131
+msgid "更改"
+msgstr ""
+
+#: templates/setting.html:120
+msgid "保存个人信息"
+msgstr ""
+
+#: templates/setting.html:258
+msgid "保存服务器设置"
 msgstr ""
 
 #: templates/sign.html:5
 msgid "注册界面"
 msgstr ""
 
-#: templates/sign.html:9 templates/sign.html:13
-msgid "注册"
+#: templates/user_manage.html:14
+msgid "用户管理"
+msgstr ""
+
+#: templates/user_manage.html:15 templates/user_manage.html:87
+msgid "添加用户"
+msgstr ""
+
+#: templates/user_manage.html:28 templates/user_manage.html:68
+msgid "注册时间"
+msgstr ""
+
+#: templates/user_manage.html:30 templates/user_manage.html:69
+#: templates/user_manage.html:94
+msgid "权限"
+msgstr ""
+
+#: templates/user_manage.html:46
+msgid "更多"
+msgstr ""
+
+#: templates/user_manage.html:48
+msgid "确定要删除该用户吗？"
+msgstr ""
+
+#: templates/user_manage.html:48
+msgid "删除"
+msgstr ""
+
+#: templates/user_manage.html:65
+msgid "用户详细信息"
+msgstr ""
+
+#: templates/user_manage.html:66
+msgid "ID"
+msgstr ""
+
+#: templates/user_manage.html:70 templates/user_manage.html:74
+#: templates/user_manage.html:96
+msgid "VIP"
+msgstr ""
+
+#: templates/user_manage.html:77 templates/user_manage.html:99
+msgid "admin"
+msgstr ""
+
+#: templates/user_manage.html:79
+msgid "保存"
+msgstr ""
+
+#: templates/user_manage.html:101
+msgid "添加"
 msgstr ""
 

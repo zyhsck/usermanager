@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timedelta
 from .UserInformation import UserInformation
 from .oauth_models import OAuthClient
-from .Config import get_config
+from .config import get_config
 
 class TokenError(Exception):
     """Token相关错误的基类"""

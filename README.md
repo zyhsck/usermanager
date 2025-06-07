@@ -1,223 +1,579 @@
-# 非嵌入式用户管理系统
+# 用户管理系统
 
-这是一个独立的用户管理系统，允许其他网站通过简单的集成来使用统一的用户认证服务。系统提供类似 OAuth 的认证流程，支持多语言，并具有完整的用户权限管理功能。
+这是一个基于 Flask 的用户管理系统，提供用户认证、数据管理、OAuth 授权等功能。
 
-## 功能特点
+## API 接口
 
-### 1. 核心功能
+### 认证说明
 
-- 用户认证和授权
-- 多级权限管理（普通用户、VIP、管理员）
-- API 令牌支持
-- 权限申请和审核流程
-- 多语言支持（中文、英文、日文、韩文、法文）
-- 基于 Redis 的会话管理
+系统支持两种认证方式：
 
-### 2. 系统架构
+1. 会话认证（默认）
 
-- 后端：Flask + SQLite + Redis
-- 前端：HTML + CSS
-- 认证：Session + API Token
-- 数据存储：
-  - user.db：用户信息
-  - apply.db：权限申请记录
+   - 通过登录接口获取会话
+   - 适用于浏览器环境
 
-## 快速开始
+2. Server Token 认证
+   - 使用 server_settings 中配置的 server_token
+   - 具有管理员权限
+   - 适用于服务器间通信
 
-### 1. 系统要求
+### 用户数据 API
 
-- Python 3.7+
-- Redis 服务器
-- SQLite3
+#### GET /api/user_data
 
-### 2. 安装配置
+获取用户数据
 
-```bash
-# 1. 克隆仓库
-git clone [repository_url]
+**参数：**
 
-# 2. 安装依赖
-pip install -r requirements.txt
+- `key` (可选)：数据键名，指定时只返回该键的数据
+- `username` (可选，需管理员权限)：目标用户名，指定时返回该用户的数据
+- `server_token` (可选)：服务器令牌，提供后具有管理员权限
 
-# 3. 配置Redis连接
-# 编辑 common/Config.py 中的Redis配置：
-app.config['SESSION_REDIS'] = redis.Redis(
-    host='your_redis_host',
-    port=your_redis_port,
-    password='your_redis_password'
-)
+**示例请求：**
 
-# 4. 初始化数据库
-python -c "from common.UserInformation import initialize_system; initialize_system()"
+```
+GET /api/user_data?key=profile
+GET /api/user_data?username=testuser&server_token=your_server_token_here
 ```
 
-## 集成指南
+**成功响应：**
 
-### 1. 认证流程
+```json
+// 单个数据
+{
+  "id": 1,
+  "user_id": "user123",
+  "data_key": "profile",
+  "data_value": {
+    "name": "张三",
+    "age": 30,
+    "email": "zhangsan@example.com",
+    "department": "技术部",
+    "position": "高级工程师",
+    "skills": ["Python", "JavaScript", "Docker"],
+    "joinDate": "2023-01-15"
+  },
+  "created_at": "2023-01-01 12:00:00",
+  "updated_at": "2023-01-02 13:00:00"
+}
 
-1. 重定向到登录页面：
-
-```javascript
-// 在你的网站中重定向到认证服务器
-window.location.href =
-  "http://your-auth-server/login?redirect_uri=" +
-  encodeURIComponent(window.location.href);
-```
-
-2. 用户完成登录后，系统将重定向回你的网站，并携带认证令牌：
-
-```javascript
-// 在你的回调页面中验证令牌
-async function verifyToken(token) {
-  const response = await fetch("http://your-auth-server/api/verify_token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+// 多个数据
+[
+  {
+    "id": 1,
+    "user_id": "user123",
+    "data_key": "profile",
+    "data_value": {
+      "name": "张三",
+      "age": 30,
+      "department": "技术部"
     },
-    body: JSON.stringify({ token: token }),
-  });
-  return await response.json();
-}
+    "created_at": "2023-01-01 12:00:00",
+    "updated_at": "2023-01-02 13:00:00"
+  },
+  {
+    "id": 2,
+    "user_id": "user123",
+    "data_key": "settings",
+    "data_value": {
+      "theme": "dark",
+      "notifications": {
+        "email": true,
+        "desktop": false,
+        "mobile": true
+      },
+      "language": "zh-CN",
+      "timezone": "Asia/Shanghai"
+    },
+    "created_at": "2023-01-01 12:30:00",
+    "updated_at": "2023-01-02 14:00:00"
+  }
+]
 ```
 
-### 2. API 接口
+#### POST /api/user_data
 
-#### 2.1 用户认证
+添加或更新用户数据
 
-```http
-POST /api/login
-Content-Type: application/json
-
-{
-    "username": "user",
-    "password": "password"
-}
-```
-
-响应：
+**请求体：**
 
 ```json
 {
-  "success": true,
-  "token": "api_token",
-  "user": {
-    "username": "user",
-    "vip": false,
-    "admin": false
+  "key": "profile",
+  "value": {
+    "name": "张三",
+    "age": 30,
+    "email": "zhangsan@example.com",
+    "department": "技术部",
+    "position": "高级工程师",
+    "skills": ["Python", "JavaScript", "Docker"],
+    "joinDate": "2023-01-15"
+  },
+  "username": "testuser", // 可选，需管理员权限
+  "server_token": "your_server_token_here" // 可选，提供后具有管理员权限
+}
+```
+
+**参数说明：**
+
+- `key` (必需)：数据键名，最大 50 字符
+- `value` (必需)：数据值，最大 1000 字符，可以是字符串、数字、对象或数组
+- `username` (可选)：目标用户名，需要管理员权限
+- `server_token` (可选)：服务器令牌，提供后具有管理员权限
+
+**成功响应：**
+
+```json
+{
+  "message": "数据操作成功",
+  "data": {
+    "id": 1,
+    "user_id": "user123",
+    "data_key": "profile",
+    "data_value": {
+      "name": "张三",
+      "age": 30,
+      "email": "zhangsan@example.com",
+      "department": "技术部",
+      "position": "高级工程师",
+      "skills": ["Python", "JavaScript", "Docker"],
+      "joinDate": "2023-01-15"
+    },
+    "created_at": "2023-01-01 12:00:00",
+    "updated_at": "2023-01-02 13:00:00"
   }
 }
 ```
 
-#### 2.2 验证令牌
+#### DELETE /api/user_data
 
-```http
-POST /api/verify_token
-Content-Type: application/json
+删除用户数据
 
-{
-    "token": "api_token"
-}
+**参数：**
+
+- `key` (必需)：要删除的数据键名
+- `username` (可选)：目标用户名，需要管理员权限
+- `server_token` (可选)：服务器令牌，提供后具有管理员权限
+
+**示例请求：**
+
+```
+DELETE /api/user_data?key=profile
+DELETE /api/user_data?key=profile&username=testuser&server_token=your_server_token_here
 ```
 
-响应：
+**成功响应：**
 
 ```json
 {
-  "valid": true,
-  "user": {
-    "username": "user",
-    "vip": false,
-    "admin": false
+  "message": "数据删除成功",
+  "data": null
+}
+```
+
+### 批量数据操作 API
+
+#### POST /api/user_data/bulk
+
+批量添加/更新/获取数据
+
+**请求体：**
+
+```json
+{
+  "server_token": "your_server_token_here", // 可选，提供后具有管理员权限
+  "operations": [
+    {
+      "key": "profile",
+      "value": {
+        "name": "张三",
+        "age": 30,
+        "email": "zhangsan@example.com",
+        "department": "技术部",
+        "position": "高级工程师"
+      },
+      "action": "add",
+      "username": "testuser" // 可选，需管理员权限
+    },
+    {
+      "key": "settings",
+      "value": {
+        "theme": "dark",
+        "notifications": {
+          "email": true,
+          "desktop": false,
+          "mobile": true
+        },
+        "language": "zh-CN",
+        "timezone": "Asia/Shanghai"
+      },
+      "action": "update"
+    },
+    {
+      "key": "preferences",
+      "action": "get"
+    }
+  ]
+}
+```
+
+**参数说明：**
+
+- `server_token` (可选)：服务器令牌，提供后具有管理员权限
+- `operations` (必需)：操作数组
+  - `key` (必需)：数据键名，最大 50 字符
+  - `value` (add/update 操作必需)：数据值，最大 1000 字符
+  - `action` (必需)：操作类型，可选值：
+    - `add`: 添加新数据
+    - `update`: 更新已有数据
+    - `get`: 获取数据
+    - `delete`: 删除数据
+  - `username` (可选)：目标用户名，需要管理员权限
+
+**成功响应：**
+
+```json
+{
+  "message": "批量操作完成，成功2条，失败1条",
+  "success_count": 2,
+  "total_count": 3,
+  "results": [
+    {
+      "key": "profile",
+      "status": "success",
+      "data": {
+        "id": 1,
+        "user_id": "testuser",
+        "data_key": "profile",
+        "data_value": {
+          "name": "张三",
+          "age": 30,
+          "email": "zhangsan@example.com",
+          "department": "技术部",
+          "position": "高级工程师"
+        }
+      }
+    },
+    {
+      "key": "settings",
+      "status": "success",
+      "data": {
+        "id": 2,
+        "user_id": "user123",
+        "data_key": "settings",
+        "data_value": {
+          "theme": "dark",
+          "notifications": {
+            "email": true,
+            "desktop": false,
+            "mobile": true
+          },
+          "language": "zh-CN",
+          "timezone": "Asia/Shanghai"
+        }
+      }
+    }
+  ],
+  "failed_operations": [
+    {
+      "key": "preferences",
+      "error": "数据不存在"
+    }
+  ]
+}
+```
+
+#### DELETE /api/user_data/bulk
+
+批量删除数据
+
+**请求体 (方式 1 - 推荐)：**
+
+```json
+{
+  "server_token": "your_server_token_here", // 可选，提供后具有管理员权限
+  "operations": [
+    {
+      "key": "temporary_data",
+      "action": "delete",
+      "username": "testuser" // 可选，需管理员权限
+    },
+    {
+      "key": "old_settings",
+      "action": "delete"
+    }
+  ]
+}
+```
+
+**请求体 (方式 2 - 兼容旧格式)：**
+
+```json
+{
+  "server_token": "your_server_token_here", // 可选，提供后具有管理员权限
+  "keys": ["temporary_data", "old_settings", "cache"]
+}
+```
+
+**成功响应：**
+
+```json
+{
+  "message": "批量删除完成，成功2条，失败1条",
+  "success_count": 2,
+  "total_count": 3,
+  "failed_operations": [
+    {
+      "key": "cache",
+      "error": "数据不存在"
+    }
+  ]
+}
+```
+
+### OAuth 相关 API
+
+#### GET /api/oauth/clients
+
+获取 OAuth 客户端列表
+
+**参数：**
+
+- `server_token` (可选)：服务器令牌，提供后具有管理员权限
+
+**响应示例：**
+
+```json
+[
+  {
+    "client_id": "abc123",
+    "name": "企业门户系统",
+    "redirect_uri": "https://portal.example.com/oauth/callback",
+    "created_at": "2023-01-01 12:00:00",
+    "is_active": true,
+    "scopes": ["read", "write"],
+    "last_used": "2023-05-15 08:30:00"
+  }
+]
+```
+
+#### POST /api/oauth/clients
+
+创建新的 OAuth 客户端
+
+**请求体：**
+
+```json
+{
+  "server_token": "your_server_token_here", // 可选，提供后具有管理员权限
+  "name": "企业门户系统",
+  "redirect_uri": "https://portal.example.com/oauth/callback",
+  "is_active": true,
+  "scopes": ["read", "write"]
+}
+```
+
+**成功响应：**
+
+```json
+{
+  "message": "OAuth客户端创建成功",
+  "client": {
+    "client_id": "abc123",
+    "client_secret": "xyz789",
+    "name": "企业门户系统",
+    "redirect_uri": "https://portal.example.com/oauth/callback",
+    "is_active": true,
+    "scopes": ["read", "write"],
+    "created_at": "2023-05-20 10:00:00"
   }
 }
 ```
 
-### 3. 权限管理
+#### PUT /api/oauth/clients
 
-系统支持三种权限级别：
+更新 OAuth 客户端
 
-- 普通用户：基本访问权限
-- VIP 用户：额外功能访问权限
-- 管理员：系统管理权限
+**请求体：**
 
-用户可以通过权限申请系统申请升级权限：
-
-```http
-POST /api/apply_permission
-Content-Type: application/json
-
+```json
 {
-    "permission": "vip",
-    "reason": "申请理由"
+  "server_token": "your_server_token_here", // 可选，提供后具有管理员权限
+  "client_id": "abc123",
+  "name": "更新后的系统名称",
+  "redirect_uri": "https://new-portal.example.com/oauth/callback",
+  "is_active": true,
+  "scopes": ["read", "write", "admin"]
 }
 ```
 
-## 安全说明
+**成功响应：**
 
-1. 密码安全
-
-- 使用 Werkzeug 的 security 模块进行密码哈希
-- 所有密码都经过加密存储
-- 支持强制登出机制
-
-2. 会话安全
-
-- 基于 Redis 的会话管理
-- 支持会话超时
-- 防止会话固定攻击
-
-3. API 安全
-
-- 基于令牌的 API 认证
-- 支持令牌过期和刷新
-- 请求频率限制
-
-## 自定义配置
-
-### 1. 多语言支持
-
-在`translations`目录下添加新的语言支持：
-
-```bash
-pybabel extract -F babel.cfg -o messages.pot .
-pybabel init -i messages.pot -d translations -l [语言代码]
-pybabel compile -d translations
+```json
+{
+  "message": "OAuth客户端更新成功",
+  "client": {
+    "client_id": "abc123",
+    "name": "更新后的系统名称",
+    "redirect_uri": "https://new-portal.example.com/oauth/callback",
+    "is_active": true,
+    "scopes": ["read", "write", "admin"],
+    "updated_at": "2023-05-20 11:00:00"
+  }
+}
 ```
 
-### 2. 样式定制
+#### DELETE /api/oauth/clients
 
-可以通过修改`static/style.css`来自定义界面样式。
+删除 OAuth 客户端
 
-## 常见问题
+**参数：**
 
-1. Redis 连接失败
+- `client_id` (必需)：要删除的客户端 ID
+- `server_token` (可选)：服务器令牌，提供后具有管理员权限
 
-- 检查 Redis 服务器是否正常运行
-- 验证连接配置是否正确
-- 确认防火墙设置
+**示例请求：**
 
-2. 跨域问题
+```
+DELETE /api/oauth/clients?client_id=abc123&server_token=your_server_token_here
+```
 
-- 在配置中添加允许的域名
-- 使用 CORS 中间件
-- 确保请求包含正确的头部
+**成功响应：**
 
-## 开发计划
+```json
+{
+  "message": "OAuth客户端删除成功"
+}
+```
 
-- [ ] 添加 OAuth 2.0 支持
-- [ ] 实现手机号验证
-- [ ] 添加第三方登录支持
-- [ ] 优化 API 性能
-- [ ] 增加更多的统计功能
+## 数据示例
 
-## 贡献指南
+### 用户配置文件 (profile)
 
-欢迎提交 Issue 和 Pull Request 来帮助改进项目。在提交代码前，请确保：
+```json
+{
+  "key": "profile",
+  "value": {
+    "name": "张三",
+    "age": 30,
+    "email": "zhangsan@example.com",
+    "department": "技术部",
+    "position": "高级工程师",
+    "skills": ["Python", "JavaScript", "Docker"],
+    "education": {
+      "degree": "硕士",
+      "major": "计算机科学",
+      "school": "示例大学",
+      "graduationYear": 2020
+    },
+    "contact": {
+      "phone": "13800138000",
+      "address": "北京市海淀区",
+      "emergency": {
+        "name": "李四",
+        "relationship": "朋友",
+        "phone": "13900139000"
+      }
+    },
+    "joinDate": "2023-01-15",
+    "projects": [
+      {
+        "name": "用户管理系统",
+        "role": "技术负责人",
+        "period": "2023-01 至今"
+      }
+    ]
+  }
+}
+```
 
-1. 代码符合 PEP 8 规范
-2. 添加了必要的测试
-3. 更新了相关文档
+### 用户设置 (settings)
 
-## 许可证
+```json
+{
+  "key": "settings",
+  "value": {
+    "theme": "dark",
+    "notifications": {
+      "email": {
+        "enabled": true,
+        "frequency": "daily",
+        "types": ["security", "updates"]
+      },
+      "desktop": {
+        "enabled": false
+      },
+      "mobile": {
+        "enabled": true,
+        "quiet_hours": {
+          "start": "22:00",
+          "end": "08:00"
+        }
+      }
+    },
+    "language": "zh-CN",
+    "timezone": "Asia/Shanghai",
+    "accessibility": {
+      "fontSize": "medium",
+      "highContrast": false,
+      "reduceMotion": true
+    },
+    "privacy": {
+      "shareProfile": "contacts_only",
+      "showOnline": true,
+      "allowMessages": "all"
+    },
+    "security": {
+      "twoFactorAuth": true,
+      "sessionTimeout": 3600,
+      "trustedDevices": ["laptop-home", "iphone-12"]
+    }
+  }
+}
+```
 
-MIT License
+### 应用偏好设置 (preferences)
+
+```json
+{
+  "key": "preferences",
+  "value": {
+    "dashboard": {
+      "layout": "grid",
+      "widgets": [
+        {
+          "id": "calendar",
+          "position": 1,
+          "visible": true
+        },
+        {
+          "id": "tasks",
+          "position": 2,
+          "visible": true
+        },
+        {
+          "id": "notifications",
+          "position": 3,
+          "visible": false
+        }
+      ]
+    },
+    "editor": {
+      "font": "Source Code Pro",
+      "fontSize": 14,
+      "tabSize": 2,
+      "autoSave": true,
+      "wordWrap": "on"
+    },
+    "communication": {
+      "emailDigest": "weekly",
+      "chatStatus": "available",
+      "autoReply": {
+        "enabled": false,
+        "message": "我现在不在，稍后回复"
+      }
+    }
+  }
+}
+```

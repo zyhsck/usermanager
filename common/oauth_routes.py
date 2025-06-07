@@ -4,7 +4,7 @@ from typing import Dict, Optional, Tuple, Any, Callable
 from .token_manager import TokenManager, TokenError
 from .UserInformation import UserInformation
 from .oauth_models import OAuthClient
-from .Config import get_config
+from .config import get_config
 from flask_cors import cross_origin
 import urllib.parse
 import logging

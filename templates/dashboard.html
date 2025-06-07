@@ -23,13 +23,24 @@
             <img src="{{ url_for('static', filename='png/usermanage.png') }}" alt="用户管理图标">
             <span class="tooltiptext">用户管理</span>
         </a>
+
+        <a href="{{ url_for('user_data_manage') }}" class="tooltip">
+            <img src="{{ url_for('static', filename='png/userdata.png') }}" alt="用户数据图标">
+            <span class="tooltiptext">用户数据</span>
+        </a>
+        
+        {% endif %}
         <a href="{{ url_for('setting') }}" class="tooltip">
             <img src="{{ url_for('static', filename='png/setting.png') }}" alt="设置图标">
             <span class="tooltiptext">设置</span>
         </a>
-        {% endif %}
     </div>
     <div class="dashboard-container">
+        {% if userdata.usericon_url %}
+        <img  onclick="location.href='{{ url_for('setting') }}'" src="{{ userdata.usericon_url }}" alt="头像" class="user-icon">
+        {% else %}
+        <div class="avatar-placeholder"><a style="color: #2c72eb;text-decoration: none;" href="{{ url_for('setting') }}">暂无头像</a></div>
+        {% endif %}
         <h1>欢迎，{{ username }}！</h1>
 
         <div class="status">
@@ -44,6 +55,17 @@
     </div>
 </body>
 <style>
+    /* 添加CSS样式以显示用户头像 */
+    .user-icon {
+        width: 128px;
+        height: 128px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        box-shadow: 0 0 5px #ccc;
+    }
+    .user-icon:hover{
+        filter: brightness(90%);
+    }
     /* 添加CSS样式以显示tooltip */
     .tooltip {
         position: relative;
